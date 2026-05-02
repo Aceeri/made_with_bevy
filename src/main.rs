@@ -117,10 +117,17 @@ fn setup(
     commands.spawn((Name::new("Camera"), Camera2d, VelloView));
 
     commands.spawn((
-        Name::new("Built with text"),
-        VelloSvg2d(asset_server.load::<VelloSvg>("built with.svg")),
+        Name::new("'Built' text"),
+        VelloSvg2d(asset_server.load::<VelloSvg>("built.svg")),
         VelloSvgAnchor::Center,
         Transform::from_xyz(55.0, 60.0, 0.0),
+    ));
+
+    commands.spawn((
+        Name::new("'With' text"),
+        VelloSvg2d(asset_server.load::<VelloSvg>("with.svg")),
+        VelloSvgAnchor::Center,
+        Transform::from_xyz(180.0, 60.0, 0.0),
     ));
 
     // commands.spawn((
