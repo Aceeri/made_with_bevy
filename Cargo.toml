@@ -1,5 +1,6 @@
 [package]
-name = "made_with_bevy"
+name = "built_with_bevy"
+description = "Splashscreen animation for bevy games"
 version = "0.1.0"
 edition = "2024"
 
