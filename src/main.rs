@@ -12,9 +12,11 @@ const BIRD_NAMES: [&str; 3] = ["Birb 0 (front)", "Birb 1 (middle)", "Birb 2 (bac
 
 const BIRD_SCALE: f32 = 6.0;
 const FADE_DURATION: f32 = 0.6;
-const KEYFRAME_DURATION: f32 = 0.8;
-const FADE_OUT_START: f32 = 2.4;
+const KEYFRAME_DURATION: f32 = 0.9;
+const SPLAY_OUT_START: f32 = 1.1;
+const FADE_OUT_START: f32 = SPLAY_OUT_START + KEYFRAME_DURATION + 1.15;
 const BIRD_ANCHOR: Vec2 = Vec2::new(-110.0, 25.0);
+const BIRD_SLIDE_OFFSET: f32 = 20.0;
 
 fn main() {
     App::new()
@@ -23,10 +25,10 @@ fn main() {
             ..default()
         }))
         .add_plugins(VelloPlugin::default())
-        .add_plugins(EguiPlugin::default())
-        .add_plugins(
-            WorldInspectorPlugin::default().run_if(input_toggle_active(true, KeyCode::Escape)),
-        )
+        // .add_plugins(EguiPlugin::default())
+        // .add_plugins(
+        //     WorldInspectorPlugin::default().run_if(input_toggle_active(true, KeyCode::Escape)),
+        // )
         .insert_resource(ClearColor(Color::srgb_u8(0x23, 0x23, 0x26)))
         .add_systems(Startup, setup)
         .add_observer(splash_event)
@@ -64,8 +66,8 @@ fn bird_keyframes() -> [KeyFrame; 3] {
     [
         KeyFrame {
             start: Transform {
-                translation: Vec3::new(-203.0, 0.5, 2.0),
-                rotation: Quat::from_euler(EulerRot::XYZ, -0.0, 0.0, -0.0),
+                translation: Vec3::new(-203.0 + BIRD_SLIDE_OFFSET, 0.5, 2.0),
+                rotation: Quat::from_euler(EulerRot::XYZ, -0.0, 0.0, -0.175),
                 scale: Vec3::splat(3.8),
             },
             end: Transform {
@@ -76,7 +78,7 @@ fn bird_keyframes() -> [KeyFrame; 3] {
         },
         KeyFrame {
             start: Transform {
-                translation: Vec3::new(-200.0, 4.0, 1.0),
+                translation: Vec3::new(-200.0 + BIRD_SLIDE_OFFSET, 4.0, 1.0),
                 rotation: Quat::from_euler(EulerRot::XYZ, -0.0, 0.0, -0.0),
                 scale: Vec3::splat(3.3),
             },
@@ -88,7 +90,7 @@ fn bird_keyframes() -> [KeyFrame; 3] {
         },
         KeyFrame {
             start: Transform {
-                translation: Vec3::new(-235.0, 0.0, 0.0),
+                translation: Vec3::new(-235.0 + BIRD_SLIDE_OFFSET, 0.0, 0.0),
                 rotation: Quat::from_euler(EulerRot::XYZ, -0.0, 0.0, -0.0),
                 scale: Vec3::splat(3.0),
             },
@@ -173,17 +175,33 @@ fn setup(
         .expect("cutoff svg failed to parse"),
     );
 
+    let cutoff_rotation = Quat::from_euler(EulerRot::XYZ, 0.0, 0.0, -0.3);
+    let cutoff_scale = Vec3::new(150.0, 300.0, 1.0);
+    let cutoff_keyframe = KeyFrame {
+        start: Transform {
+            translation: Vec3::new(-230.0 + BIRD_SLIDE_OFFSET, 35.0, 2.0),
+            rotation: cutoff_rotation,
+            scale: cutoff_scale,
+        },
+        end: Transform {
+            translation: Vec3::new(-230.0, 35.0, 2.0),
+            rotation: cutoff_rotation,
+            scale: cutoff_scale,
+        },
+    };
+
     let cutoff = commands
         .spawn((
             Name::new("Tail/wing cutoff"),
             VelloSvg2d(cutoff_svg),
             VelloSvgAnchor::Center,
             Transform {
-                translation: Vec3::new(-230.0, 35.0, 2.0),
-                rotation: Quat::from_euler(EulerRot::XYZ, 0.0, 0.0, -0.3),
-                scale: Vec3::new(150.0, 300.0, 1.0),
+                translation: cutoff_keyframe.start.translation,
+                rotation: cutoff_rotation,
+                scale: cutoff_scale,
             },
             Visibility::Hidden,
+            KeyframeInterp::from_keyframe(cutoff_keyframe),
         ))
         .id();
 
@@ -299,11 +317,9 @@ fn on_reset(
     ] {
         commands.entity(entity).insert(Fade::default());
     }
-    for entity in splash.birds {
-        if let Ok(mut interp) = keyframes.get_mut(entity) {
-            interp.start = false;
-            interp.elapsed = 0.0;
-        }
+    for mut interp in &mut keyframes {
+        interp.start = false;
+        interp.elapsed = 0.0;
     }
 }
 
@@ -412,16 +428,18 @@ fn splash_dispatch(time: Res<Time>, mut splash: ResMut<Splash>, mut commands: Co
     let last = splash.elapsed;
     splash.elapsed += time.delta_secs();
 
-    let tasks: [(f32, SplashEvent); 10] = [
+    let tasks: [(f32, SplashEvent); 12] = [
         (0.0, SplashEvent::Fade(splash.birds[0])),
         (0.0, SplashEvent::Fade(splash.built)),
         (0.0, SplashEvent::Fade(splash.with)),
         (0.0, SplashEvent::Fade(splash.bevy)),
-        (0.8, SplashEvent::Show(splash.cutoff)),
-        (0.8, SplashEvent::Show(splash.birds[1])),
-        (0.8, SplashEvent::Show(splash.birds[2])),
-        (0.8, SplashEvent::Keyframe(splash.birds[1])),
-        (0.8, SplashEvent::Keyframe(splash.birds[2])),
+        (SPLAY_OUT_START, SplashEvent::Show(splash.cutoff)),
+        (SPLAY_OUT_START, SplashEvent::Show(splash.birds[1])),
+        (SPLAY_OUT_START, SplashEvent::Show(splash.birds[2])),
+        (SPLAY_OUT_START, SplashEvent::Keyframe(splash.birds[1])),
+        (SPLAY_OUT_START, SplashEvent::Keyframe(splash.birds[2])),
+        (SPLAY_OUT_START, SplashEvent::Keyframe(splash.cutoff)),
+        (SPLAY_OUT_START, SplashEvent::Keyframe(splash.birds[0])),
         (FADE_OUT_START, SplashEvent::Fade(splash.overlay)),
     ];
 
