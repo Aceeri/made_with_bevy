@@ -1,0 +1,19 @@
+target/
+vendor/
+crates/*/target/
+local_world/*
+generated_worlds/*
+
+tracy/
+profile.json.gz
+flamegraph.svg
+*-cwd
+
+# Ignore all hidden directories, e.g. vscode/zed/DS_Store
+.*
+
+# Allow specific hidden
+!.cargo/
+!.github/
+!.gitignore
+!.gitattributes
