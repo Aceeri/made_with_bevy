@@ -38,38 +38,38 @@ fn bird_keyframes() -> [BirdKeyFrame; 3] {
     [
         BirdKeyFrame {
             start: Transform {
-                translation: Vec3::new(-110.0, 25.0, 2.0),
+                translation: Vec3::new(-203.0, 0.5, 2.0),
                 rotation: Quat::from_euler(EulerRot::XYZ, -0.0, 0.0, -0.0),
-                scale: Vec3::splat(6.0),
+                scale: Vec3::splat(3.8),
             },
             end: Transform {
-                translation: Vec3::new(-110.0, 25.0, 2.0),
+                translation: Vec3::new(-203.0, 0.5, 2.0),
                 rotation: Quat::from_euler(EulerRot::XYZ, -0.0, 0.0, -0.0),
-                scale: Vec3::splat(6.0),
+                scale: Vec3::splat(3.8),
             },
         },
         BirdKeyFrame {
             start: Transform {
-                translation: Vec3::new(-110.0, 25.0, 1.0),
+                translation: Vec3::new(-200.0, 4.0, 1.0),
                 rotation: Quat::from_euler(EulerRot::XYZ, -0.0, 0.0, -0.0),
-                scale: Vec3::splat(5.0),
+                scale: Vec3::splat(3.3),
             },
             end: Transform {
-                translation: Vec3::new(-65.9, 35.6, 1.0),
+                translation: Vec3::new(-175.7, 3.3, 1.0),
                 rotation: Quat::from_euler(EulerRot::XYZ, -0.0, 0.0, -0.5),
-                scale: Vec3::splat(5.0),
+                scale: Vec3::splat(3.3),
             },
         },
         BirdKeyFrame {
             start: Transform {
-                translation: Vec3::new(-110.5, 21.8, 0.0),
+                translation: Vec3::new(-235.0, 0.0, 0.0),
                 rotation: Quat::from_euler(EulerRot::XYZ, -0.0, 0.0, -0.0),
-                scale: Vec3::splat(4.25),
+                scale: Vec3::splat(3.0),
             },
             end: Transform {
-                translation: Vec3::new(-30.5, 21.8, 0.0),
-                rotation: Quat::from_euler(EulerRot::XYZ, -0.0, 0.0, -1.0),
-                scale: Vec3::splat(4.25),
+                translation: Vec3::new(-156.8, -6.0, 0.0),
+                rotation: Quat::from_euler(EulerRot::XYZ, -0.0, 0.0, -1.1),
+                scale: Vec3::splat(3.0),
             },
         },
     ]
@@ -109,8 +109,33 @@ fn main() {
         .run();
 }
 
-fn setup(mut commands: Commands, mut svgs: ResMut<Assets<VelloSvg>>) {
+fn setup(
+    mut commands: Commands,
+    mut svgs: ResMut<Assets<VelloSvg>>,
+    asset_server: Res<AssetServer>,
+) {
     commands.spawn((Name::new("Camera"), Camera2d, VelloView));
+
+    commands.spawn((
+        Name::new("Built with text"),
+        VelloSvg2d(asset_server.load::<VelloSvg>("built with.svg")),
+        VelloSvgAnchor::Center,
+        Transform::from_xyz(55.0, 60.0, 0.0),
+    ));
+
+    // commands.spawn((
+    //     Name::new("Bird text"),
+    //     VelloSvg2d(asset_server.load::<VelloSvg>("bird_text.svg")),
+    //     VelloSvgAnchor::Center,
+    //     Transform::from_xyz(0.0, 0.0, 0.0),
+    // ));
+
+    commands.spawn((
+        Name::new("Bevy text"),
+        VelloSvg2d(asset_server.load::<VelloSvg>("bevy_text.svg")),
+        VelloSvgAnchor::Center,
+        Transform::from_xyz(90.0, -20.0, 0.0),
+    ));
 
     let bodies: [Handle<VelloSvg>; 3] =
         std::array::from_fn(|i| svgs.add(bake_bird(BIRD_COLORS[i])));
@@ -128,10 +153,11 @@ fn setup(mut commands: Commands, mut svgs: ResMut<Assets<VelloSvg>>) {
         VelloSvg2d(cutoff_svg),
         VelloSvgAnchor::Center,
         Transform {
-            translation: Vec3::new(-130.0, 35.0, 2.0),
+            translation: Vec3::new(-230.0, 35.0, 2.0),
             rotation: Quat::from_euler(EulerRot::XYZ, 0.0, 0.0, -0.3),
             scale: Vec3::new(150.0, 300.0, 1.0),
-        }
+        },
+        // Visibility::Hidden,
     ));
 
     for index in 0u8..3 {
