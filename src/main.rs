@@ -1,6 +1,6 @@
 use bevy::{asset::AssetMetaCheck, input::common_conditions::input_toggle_active, prelude::*};
 use bevy_inspector_egui::{bevy_egui::EguiPlugin, quick::WorldInspectorPlugin};
-use bevy_vello::{VelloPlugin, integrations::svg::load_svg_from_str, prelude::*};
+use bevy_vello::{integrations::svg::load_svg_from_str, prelude::*, VelloPlugin};
 
 const BIRD_SVG: &str = include_str!("../assets/bird-0.svg");
 /// What color to replace
@@ -12,8 +12,8 @@ const BIRD_NAMES: [&str; 3] = ["Birb 0 (front)", "Birb 1 (middle)", "Birb 2 (bac
 
 const BIRD_SCALE: f32 = 6.0;
 const FADE_DURATION: f32 = 0.6;
-const KEYFRAME_DURATION: f32 = 0.9;
-const SPLAY_OUT_START: f32 = 1.1;
+const KEYFRAME_DURATION: f32 = 1.4;
+const SPLAY_OUT_START: f32 = 0.3;
 const FADE_OUT_START: f32 = SPLAY_OUT_START + KEYFRAME_DURATION + 1.15;
 const BIRD_ANCHOR: Vec2 = Vec2::new(-110.0, 25.0);
 const BIRD_SLIDE_OFFSET: f32 = 20.0;
@@ -25,10 +25,10 @@ fn main() {
             ..default()
         }))
         .add_plugins(VelloPlugin::default())
-        // .add_plugins(EguiPlugin::default())
-        // .add_plugins(
-        //     WorldInspectorPlugin::default().run_if(input_toggle_active(true, KeyCode::Escape)),
-        // )
+        .add_plugins(EguiPlugin::default())
+        .add_plugins(
+            WorldInspectorPlugin::default().run_if(input_toggle_active(true, KeyCode::Escape)),
+        )
         .insert_resource(ClearColor(Color::srgb_u8(0x23, 0x23, 0x26)))
         .add_systems(Startup, setup)
         .add_observer(splash_event)
@@ -170,21 +170,21 @@ fn setup(
     // has to be another vello svg to interleave
     let cutoff_svg = svgs.add(
         load_svg_from_str(&format!(
-            r#"<svg><rect width="1" height="1" fill="{BG_FILL}"/></svg>"#
+            r#"<svg><rect width="1" height="1" fill="{BG_FILL}"/></svg>"# // r##"<svg><rect width="1" height="1" fill="#FFFFFF"/></svg>"##
         ))
         .expect("cutoff svg failed to parse"),
     );
 
     let cutoff_rotation = Quat::from_euler(EulerRot::XYZ, 0.0, 0.0, -0.3);
-    let cutoff_scale = Vec3::new(150.0, 300.0, 1.0);
+    let cutoff_scale = Vec3::new(50.0, 100.0, 1.0);
     let cutoff_keyframe = KeyFrame {
         start: Transform {
-            translation: Vec3::new(-230.0 + BIRD_SLIDE_OFFSET, 35.0, 2.0),
+            translation: Vec3::new(-13.0, 5.8, 0.0),
             rotation: cutoff_rotation,
             scale: cutoff_scale,
         },
         end: Transform {
-            translation: Vec3::new(-230.0, 35.0, 2.0),
+            translation: Vec3::new(-13.0, 5.8, 0.0),
             rotation: cutoff_rotation,
             scale: cutoff_scale,
         },
@@ -250,13 +250,25 @@ fn setup(
                 .with_scale(Vec3::splat(BIRD_SCALE)),
             Visibility::Hidden,
             Bird { index },
-            KeyframeInterp::from_keyframe(bird_keyframes()[index as usize].clone()),
+            KeyframeInterp {
+                start: false,
+                elapsed: 0.0,
+                keyframe: bird_keyframes()[index as usize].clone(),
+
+                translation: EaseFunction::ElasticInOut,
+                rotation: EaseFunction::ElasticInOut,
+                scale: EaseFunction::ElasticInOut,
+            },
         ));
         if index == 0 {
             bird_cmds.insert(Fade::default());
         }
         splash.birds[index as usize] = bird_cmds.id();
     }
+
+    commands
+        .entity(splash.cutoff)
+        .insert(ChildOf(splash.birds[0]));
 
     commands.insert_resource(splash);
 }
@@ -393,6 +405,10 @@ pub struct KeyframeInterp {
     start: bool,
     elapsed: f32,
     keyframe: KeyFrame,
+
+    translation: EaseFunction,
+    rotation: EaseFunction,
+    scale: EaseFunction,
 }
 
 impl KeyframeInterp {
@@ -401,6 +417,10 @@ impl KeyframeInterp {
             start: false,
             elapsed: 0.0,
             keyframe: key,
+
+            translation: EaseFunction::CubicOut,
+            rotation: EaseFunction::CubicOut,
+            scale: EaseFunction::CubicOut,
         }
     }
 }
@@ -428,20 +448,31 @@ fn splash_dispatch(time: Res<Time>, mut splash: ResMut<Splash>, mut commands: Co
     let last = splash.elapsed;
     splash.elapsed += time.delta_secs();
 
-    let tasks: [(f32, SplashEvent); 12] = [
-        (0.0, SplashEvent::Fade(splash.birds[0])),
-        (0.0, SplashEvent::Fade(splash.built)),
-        (0.0, SplashEvent::Fade(splash.with)),
-        (0.0, SplashEvent::Fade(splash.bevy)),
-        (SPLAY_OUT_START, SplashEvent::Show(splash.cutoff)),
-        (SPLAY_OUT_START, SplashEvent::Show(splash.birds[1])),
-        (SPLAY_OUT_START, SplashEvent::Show(splash.birds[2])),
-        (SPLAY_OUT_START, SplashEvent::Keyframe(splash.birds[1])),
-        (SPLAY_OUT_START, SplashEvent::Keyframe(splash.birds[2])),
-        (SPLAY_OUT_START, SplashEvent::Keyframe(splash.cutoff)),
-        (SPLAY_OUT_START, SplashEvent::Keyframe(splash.birds[0])),
-        (FADE_OUT_START, SplashEvent::Fade(splash.overlay)),
-    ];
+    let mut tasks = Vec::new();
+
+    let mut c = 0.0;
+    tasks.extend([
+        (c, SplashEvent::Fade(splash.birds[0])),
+        (c, SplashEvent::Fade(splash.built)),
+        (c, SplashEvent::Fade(splash.with)),
+        (c, SplashEvent::Fade(splash.bevy)),
+    ]);
+
+    c += FADE_DURATION;
+
+    tasks.extend([
+        (c, SplashEvent::Show(splash.cutoff)),
+        (c, SplashEvent::Show(splash.birds[1])),
+        (c, SplashEvent::Show(splash.birds[2])),
+        (c, SplashEvent::Keyframe(splash.birds[1])),
+        (c, SplashEvent::Keyframe(splash.birds[2])),
+        (c, SplashEvent::Keyframe(splash.cutoff)),
+        (c, SplashEvent::Keyframe(splash.birds[0])),
+    ]);
+
+    c += KEYFRAME_DURATION + 1.1;
+
+    tasks.push((c, SplashEvent::Fade(splash.overlay)));
 
     for (t, event) in tasks {
         if t >= last && t < splash.elapsed {
@@ -449,7 +480,7 @@ fn splash_dispatch(time: Res<Time>, mut splash: ResMut<Splash>, mut commands: Co
         }
     }
 
-    let auto_reset = FADE_OUT_START + FADE_DURATION;
+    let auto_reset = c + FADE_DURATION;
     if auto_reset >= last && auto_reset < splash.elapsed {
         commands.trigger(ResetSplash);
     }
@@ -471,22 +502,23 @@ fn fade(fades: Query<(&Fade, &VelloSvg2d)>, mut svgs: ResMut<Assets<VelloSvg>>) 
 
 fn keyframe(mut keyed: Query<(&mut Transform, &KeyframeInterp)>) {
     for (mut transform, interp) in &mut keyed {
-        let eased = EaseFunction::CubicOut.sample_clamped(interp.elapsed / KEYFRAME_DURATION);
-
-        transform.translation = interp
-            .keyframe
-            .start
-            .translation
-            .lerp(interp.keyframe.end.translation, eased);
-        transform.rotation = interp
-            .keyframe
-            .start
-            .rotation
-            .slerp(interp.keyframe.end.rotation, eased);
-        transform.scale = interp
-            .keyframe
-            .start
-            .scale
-            .lerp(interp.keyframe.end.scale, eased);
+        transform.translation = interp.keyframe.start.translation.lerp(
+            interp.keyframe.end.translation,
+            interp
+                .translation
+                .sample_clamped(interp.elapsed / KEYFRAME_DURATION),
+        );
+        transform.rotation = interp.keyframe.start.rotation.slerp(
+            interp.keyframe.end.rotation,
+            interp
+                .rotation
+                .sample_clamped(interp.elapsed / KEYFRAME_DURATION),
+        );
+        transform.scale = interp.keyframe.start.scale.lerp(
+            interp.keyframe.end.scale,
+            interp
+                .scale
+                .sample_clamped(interp.elapsed / KEYFRAME_DURATION),
+        );
     }
 }
