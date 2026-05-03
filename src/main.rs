@@ -12,7 +12,7 @@ const BIRD_NAMES: [&str; 3] = ["Birb 0 (front)", "Birb 1 (middle)", "Birb 2 (bac
 
 const BIRD_SCALE: f32 = 6.0;
 const FADE_DURATION: f32 = 0.6;
-const KEYFRAME_DURATION: f32 = 1.4;
+const KEYFRAME_DURATION: f32 = 0.7;
 const SPLAY_OUT_START: f32 = 0.3;
 const FADE_OUT_START: f32 = SPLAY_OUT_START + KEYFRAME_DURATION + 1.15;
 const BIRD_ANCHOR: Vec2 = Vec2::new(-110.0, 25.0);
@@ -255,9 +255,9 @@ fn setup(
                 elapsed: 0.0,
                 keyframe: bird_keyframes()[index as usize].clone(),
 
-                translation: EaseFunction::ElasticInOut,
-                rotation: EaseFunction::ElasticInOut,
-                scale: EaseFunction::ElasticInOut,
+                translation: EaseFunction::BackInOut,
+                rotation: EaseFunction::BackInOut,
+                scale: EaseFunction::BackInOut,
             },
         ));
         if index == 0 {
