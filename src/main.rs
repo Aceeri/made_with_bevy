@@ -1,6 +1,16 @@
-use bevy::{asset::AssetMetaCheck, input::common_conditions::input_toggle_active, prelude::*};
+use bevy::{
+    asset::AssetMetaCheck,
+    diagnostic::{
+        EntityCountDiagnosticsPlugin, FrameTimeDiagnosticsPlugin,
+        SystemInformationDiagnosticsPlugin,
+    },
+    input::common_conditions::input_toggle_active,
+    prelude::*,
+    window::PresentMode,
+};
 use bevy_inspector_egui::{bevy_egui::EguiPlugin, quick::WorldInspectorPlugin};
 use bevy_vello::{integrations::svg::load_svg_from_str, prelude::*, VelloPlugin};
+use iyes_perf_ui::prelude::*;
 
 const BIRD_SVG: &str = include_str!("../assets/bird-0.svg");
 /// What color to replace
@@ -20,15 +30,29 @@ const BIRD_SLIDE_OFFSET: f32 = 20.0;
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins.set(AssetPlugin {
-            meta_check: AssetMetaCheck::Never,
-            ..default()
-        }))
+        .add_plugins(
+            DefaultPlugins
+                .set(AssetPlugin {
+                    meta_check: AssetMetaCheck::Never,
+                    ..default()
+                })
+                .set(WindowPlugin {
+                    primary_window: Some(Window {
+                        present_mode: PresentMode::AutoNoVsync,
+                        ..default()
+                    }),
+                    ..default()
+                }),
+        )
         .add_plugins(VelloPlugin::default())
         .add_plugins(EguiPlugin::default())
         .add_plugins(
             WorldInspectorPlugin::default().run_if(input_toggle_active(true, KeyCode::Escape)),
         )
+        .add_plugins(FrameTimeDiagnosticsPlugin::default())
+        .add_plugins(EntityCountDiagnosticsPlugin::default())
+        .add_plugins(SystemInformationDiagnosticsPlugin)
+        .add_plugins(PerfUiPlugin)
         .insert_resource(ClearColor(Color::srgb_u8(0x23, 0x23, 0x26)))
         .add_systems(Startup, setup)
         .add_observer(splash_event)
@@ -123,6 +147,25 @@ fn setup(
     asset_server: Res<AssetServer>,
 ) {
     commands.spawn((Name::new("Camera"), Camera2d, VelloView, Msaa::Sample4));
+
+    commands.spawn((
+        PerfUiRoot {
+            display_labels: true,
+            fontsize_label: 10.0,
+            fontsize_value: 10.0,
+            values_col_width: 50.0,
+            inner_margin: -2.0,
+            inner_padding: -2.0,
+            ..default()
+        },
+        PerfUiEntryFPS::default(),
+        PerfUiEntryFPSAverage::default(),
+        PerfUiEntryFPSWorst::default(),
+        PerfUiEntryFrameTimeWorst::default(),
+        PerfUiEntryEntityCount::default(),
+        PerfUiEntryCpuUsage::default(),
+        PerfUiEntryMemUsage::default(),
+    ));
 
     let built = commands
         .spawn((

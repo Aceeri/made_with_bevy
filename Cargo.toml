@@ -8,3 +8,4 @@ edition = "2024"
 bevy = "0.18.1"
 bevy_vello = { version = "0.13", features = ["svg"] }
 bevy-inspector-egui = "0.36"
+iyes_perf_ui = { git = "https://github.com/blip-radar/iyes_perf_ui", branch = "bevy-0-18" }
